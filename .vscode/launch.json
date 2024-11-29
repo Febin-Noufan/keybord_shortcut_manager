@@ -1,0 +1,28 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "keybord_shortcut_manager",
+            "cwd": "keybord_shortcut_manager",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "keybord_shortcut_manager (profile mode)",
+            "cwd": "keybord_shortcut_manager",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "keybord_shortcut_manager (release mode)",
+            "cwd": "keybord_shortcut_manager",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        }
+    ]
+}
