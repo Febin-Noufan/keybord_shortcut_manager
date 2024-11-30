@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 class KeyboardShortcutListener extends StatefulWidget {
   final Widget child;
   final List<ShortcutFocus> shortcuts;
+
+  /// Expose a [ValueNotifier] for the child app to observe the shortcut visibility state.
   final ValueNotifier<bool> shortcutKeysVisible;
 
   const KeyboardShortcutListener({
@@ -21,7 +23,6 @@ class KeyboardShortcutListener extends StatefulWidget {
 
 class _KeyboardShortcutListenerState extends State<KeyboardShortcutListener> {
   late Map<String, ShortcutFocus> shortcutMap;
-  bool _shortcutActive = false;
 
   @override
   void initState() {
@@ -35,14 +36,16 @@ class _KeyboardShortcutListenerState extends State<KeyboardShortcutListener> {
   // Handle key events
   // ignore: deprecated_member_use
   void handleKeyPress(RawKeyEvent event) {
+    // ignore: deprecated_member_use
     if (event is RawKeyDownEvent) {
-      if (event.logicalKey == LogicalKeyboardKey.altLeft) {
-        _shortcutActive = !_shortcutActive;
-        widget.shortcutKeysVisible.value = _shortcutActive;
-        return; // Prevent further processing when Alt is pressed
+      // Handle ShiftLeft to toggle shortcut visibility
+      // ignore: deprecated_member_use
+      if (event.isKeyPressed(LogicalKeyboardKey.shiftLeft)) {
+        widget.shortcutKeysVisible.value = !widget.shortcutKeysVisible.value;
       }
 
-      if (_shortcutActive && widget.shortcutKeysVisible.value) {
+      // Handle shortcuts when enabled
+      if (widget.shortcutKeysVisible.value) {
         String keyLabel = event.logicalKey.keyLabel.toLowerCase();
         if (shortcutMap.containsKey(keyLabel)) {
           shortcutMap[keyLabel]?.onFocus();
@@ -50,11 +53,8 @@ class _KeyboardShortcutListenerState extends State<KeyboardShortcutListener> {
             shortcutMap[keyLabel]?.onSubmit();
           }
         }
-        // Don't process further key events when a shortcut is active
-        return;
       }
     }
-    // ... existing code for non-shortcut key handling ...
   }
 
   @override
@@ -69,10 +69,10 @@ class _KeyboardShortcutListenerState extends State<KeyboardShortcutListener> {
 }
 
 class ShortcutFocus {
-  final String key;
-  final FocusNode focusNode;
-  final Function onFocus;
-  final Function onSubmit;
+  final String key; // The keyboard key for the shortcut
+  final FocusNode focusNode; // The focus node for the field
+  final Function onFocus; // Action to focus on the field
+  final Function onSubmit; // Action to trigger the submit button
   final bool onPress;
 
   ShortcutFocus({
