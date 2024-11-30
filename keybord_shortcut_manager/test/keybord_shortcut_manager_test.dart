@@ -1,102 +1,129 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:keybord_shortcut_manager/keybord_shortcut_manager.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:keyboard_shortcut_listener/keybord_shortcut_manager.dart';
 
 void main() {
-  group('KeyboardShortcutManager Tests', () {
-    late FocusNode field1;
-    late FocusNode field2;
-    late Map<String, FocusNode> shortcuts;
+  group('KeyboardShortcutListener', () {
+    testWidgets('Shortcut visibility toggle', (WidgetTester tester) async {
+      // Create a ValueNotifier to track shortcut visibility
+      final shortcutKeysVisible = ValueNotifier<bool>(false);
 
-    setUp(() {
-      field1 = FocusNode();
-      field2 = FocusNode();
-      shortcuts = {'A': field1, 'B': field2};
-    });
+      // Flags to track if actions were called
+      bool focusCalled = false;
+      bool submitCalled = false;
 
-    tearDown(() {
-      field1.dispose();
-      field2.dispose();
-    });
-
-    testWidgets('Hover overlay toggles on ampersand (&) key press', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: KeyboardShortcutListener(
-            shortcuts: shortcuts.entries.map((entry) {
-              return ShortcutFocus(
-                key: entry.key,
-                focusNode: entry.value,
-                onFocus: () {},
-                onSubmit: () {},
-              );
-            }).toList(),
-            child: const Placeholder(),
-          ),
-        ),
+      // Create a test focus node and shortcut
+      final testFocusNode = FocusNode();
+      final testShortcut = ShortcutFocus(
+        key: 'a',
+        focusNode: testFocusNode,
+        onFocus: () => focusCalled = true,
+        onSubmit: () => submitCalled = true,
+        onPress: true,
       );
 
-      // Verify overlay is initially hidden.
-      expect(find.text('Press A to focus on this field'), findsNothing);
-      expect(find.text('Press B to focus on this field'), findsNothing);
-
-      // Simulate pressing the ampersand (&) key.
-      await tester.sendKeyEvent(LogicalKeyboardKey.ampersand);
-      await tester.pump();
-
-      // Verify overlay appears.
-      expect(find.text('Press A to focus on this field'), findsOneWidget);
-      expect(find.text('Press B to focus on this field'), findsOneWidget);
-
-      // Simulate pressing the ampersand (&) key again.
-      await tester.sendKeyEvent(LogicalKeyboardKey.ampersand);
-      await tester.pump();
-
-      // Verify overlay disappears.
-      expect(find.text('Press A to focus on this field'), findsNothing);
-      expect(find.text('Press B to focus on this field'), findsNothing);
-    });
-
-    testWidgets('Focus changes to correct field on shortcut key press', (WidgetTester tester) async {
+      // Build the widget
       await tester.pumpWidget(
         MaterialApp(
           home: KeyboardShortcutListener(
-            shortcuts: shortcuts.entries.map((entry) {
-              return ShortcutFocus(
-                key: entry.key,
-                focusNode: entry.value,
-                onFocus: () {},
-                onSubmit: () {},
-              );
-            }).toList(),
-            child: Column(
-              children: [
-                TextField(focusNode: field1),
-                TextField(focusNode: field2),
-              ],
+            shortcutKeysVisible: shortcutKeysVisible,
+            shortcuts: [testShortcut],
+            child: Scaffold(
+              body: TextField(
+                focusNode: testFocusNode,
+              ),
             ),
           ),
         ),
       );
 
-      // Simulate pressing the ampersand (&) key to show overlay.
-      await tester.sendKeyEvent(LogicalKeyboardKey.ampersand);
-      await tester.pump();
+      // Simulate left shift key press to toggle visibility
+      await tester.sendKeyEvent(LogicalKeyboardKey.shiftLeft);
+      expect(shortcutKeysVisible.value, isTrue, 
+        reason: 'Shortcut visibility should toggle to true on first shift press');
 
-      // Simulate pressing the "A" key to focus the first field.
+      // Simulate 'a' key press when shortcuts are visible
       await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
       await tester.pump();
 
-      expect(field1.hasFocus, isTrue);
-      expect(field2.hasFocus, isFalse);
+      // Verify that actions were called
+      expect(focusCalled, isTrue, 
+        reason: 'onFocus should be called when shortcut is visible');
+      expect(submitCalled, isTrue, 
+        reason: 'onSubmit should be called when onPress is true');
 
-      // Simulate pressing the "B" key to focus the second field.
-      await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
+      // Reset flags
+      focusCalled = false;
+      submitCalled = false;
+
+      // Simulate left shift key press to hide shortcuts
+      await tester.sendKeyEvent(LogicalKeyboardKey.shiftLeft);
+      expect(shortcutKeysVisible.value, isFalse, 
+        reason: 'Shortcut visibility should toggle to false on second shift press');
+
+      // Simulate 'a' key press when shortcuts are not visible
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
       await tester.pump();
 
-      expect(field1.hasFocus, isFalse);
-      expect(field2.hasFocus, isTrue);
+      // Verify that actions were not called
+      expect(focusCalled, isFalse, 
+        reason: 'onFocus should not be called when shortcuts are not visible');
+      expect(submitCalled, isFalse, 
+        reason: 'onSubmit should not be called when shortcuts are not visible');
+    });
+
+    testWidgets('Multiple shortcuts handling', (WidgetTester tester) async {
+      final shortcutKeysVisible = ValueNotifier<bool>(true);
+
+      bool firstFocusCalled = false;
+      bool secondFocusCalled = false;
+
+      final firstFocusNode = FocusNode();
+      final secondFocusNode = FocusNode();
+
+      final testShortcuts = [
+        ShortcutFocus(
+          key: 'a',
+          focusNode: firstFocusNode,
+          onFocus: () => firstFocusCalled = true,
+          onSubmit: () {},
+          onPress: false,
+        ),
+        ShortcutFocus(
+          key: 'b',
+          focusNode: secondFocusNode,
+          onFocus: () => secondFocusCalled = true,
+          onSubmit: () {},
+          onPress: false,
+        ),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: KeyboardShortcutListener(
+            shortcutKeysVisible: shortcutKeysVisible,
+            shortcuts: testShortcuts,
+            child: Scaffold(
+              body: Column(
+                children: [
+                  TextField(focusNode: firstFocusNode),
+                  TextField(focusNode: secondFocusNode),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Simulate 'a' key press
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+      await tester.pump();
+
+      expect(firstFocusCalled, isTrue, 
+        reason: 'First shortcut should be triggered');
+      expect(secondFocusCalled, isFalse, 
+        reason: 'Second shortcut should not be triggered');
     });
   });
 }
